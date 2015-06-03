@@ -2,15 +2,9 @@
 ##GCF_to_OneMap.py
 ##written 11/6/13 by Groves Dixon
 ProgramName = 'GCF_to_OneMap.py'
-LastUpdated = '9/5/14'
-#previous updates 6/5/14
-##added a step in which a sample key is output along with the oneMap output.
-#This will help finding bugs and allow me to run oneMap_input_filter.py on select sets of samples
-#added feature where concensus parental genotypes are output as well -- output name is consensus_parent_genotypes.txt
-#newest update 9/5/14
-
+LastUpdated = '1/24/14'
 By = 'Groves Dixon'
-VersionNumber = '3.0'
+VersionNumber = '1.0'
 
 ##Assign Global User Help Variables
 
@@ -43,19 +37,17 @@ Start_time = time.time() ##keeps track of how long the script takes to run
 parser = argparse.ArgumentParser(description=Description, epilog=AdditionalProgramInfo) ##create argument parser that will automatically return help texts from global variables above
 parser.add_argument('-input', '-i', required = True, metavar = 'inputName.vcf', dest = 'In', help = 'The name of the input vcf file')
 parser.add_argument('-output', '-o', required = True, metavar = 'outputName.out', dest = 'Out', help = 'The desired name for the output file')
-parser.add_argument('-parentReps', '-preps', default = 'NoParentReps', metavar = 'list of parent replicates', dest = 'ParentReps', help = 'A list of all parent replicates with replicates for parent 1 in first column and those for parent 2 in second column')
-parser.add_argument('-exclude', default = 'None', dest = 'Exclude', help = 'A file listing sample names you want excluded from the output. This is mostly intended for replicate adults that were not parents, but can be used to exlcude any offspring sample too')
+parser.add_argument('-parentReps', '-preps', default = 'NoParentReps', metavar = 'list of parent replicates', dest = 'ParentReps', help = 'A list of all parent replicates with replicates \
+for parent 1 in first column and those for parent 2 in second column')
 parser.add_argument('-gcf', required = False, metavar = 'ouputName_forGCF', dest = 'gcfOut', help = 'Option to output the filtered dataset as a GCF also')
 parser.add_argument('-pDataCut', required = False, default = 2, type = int, dest = 'pDataCut', help = 'The Number of Parent Replicates that Must be Genotyped to Keep a Given Variant')
 parser.add_argument('-pMatchCut', required = False, default = 2, type = int, dest = 'pMatchCut', help = 'The Number of Parent Replicates that Must be Genotyped to Keep a Given Variant')
-parser.add_argument('-sout', required = False, default = "GCF_to_OneMap_SampleNamesOut.txt", type = str, dest = 'Sout', help = 'The name for the output file that gives the sample names coordinated with the OneMap output.')
 args = parser.parse_args()
 
 
 #Assign Arguments
 InfileName = args.In
 OutfileName = args.Out
-SamplesOutputName = args.Sout
 ParentReplicateList = args.ParentReps
 if args.gcfOut > 0:
     GCFout = args.gcfOut
@@ -63,9 +55,11 @@ else:
     GCFout = InfileName[:-4] + '_GCF_to_OneMapOutput.gcf'
 ParentDataThreshold = args.pDataCut
 ParentMatchThreshold = args.pMatchCut
-ExcludeFileName = args.Exclude
 Verbose = 'N'
-TypesToFix = ['D1.10', 'D2.15']
+
+
+
+
 
 
 def read_GCF(infileName):
@@ -83,7 +77,7 @@ def read_GCF(infileName):
             else:
                 line = line.strip("\n").split("\t")
                 variantList.append(line[0])
-                genotypesList.append(line[1:]) #indexed to match sample list
+                genotypesList.append(line[1:])
     print '\nFound {} samples in the file'.format(len(sampleList))
     print '\nFound {} variants in the file'.format(len(variantList))
     return variantList, genotypesList, sampleList
@@ -121,35 +115,13 @@ def parent_rep_lists(parentRepList):
     print
     return p1Reps, p2Reps
 
-def read_exclude_list(ExcludeFileName):
-    if ExcludeFileName != "None":
-        exList = []
-        print "\nFound a set of samples to exclude: {}".format(ExcludeFileName)
-        print "\nSamples to be excluded:"
-        with open(ExcludeFileName, 'r') as infile:
-            for line in infile:
-                line = line.strip('\n')
-                exList.append(line)
-        print "\nList of Variants to be Excluded:"
-        print exList
-        return exList
-                
-
-def get_offspring_list(sampleList, p1Reps, p2Reps, excludeList):
+def get_offspring_list(sampleList, p1Reps, p2Reps):
     '''pulls out the list of just the offspring'''
     offspringList = []
-    excluding = 'F' 
-    if excludeList != 'None':
-        excluding = 'T'
     for i in sampleList:
-        if i in p1Reps:
-            continue
-        if i in p2Reps:
-            continue
-        if i in excludeList:
-            print 'Not including sample {} because it was in exclude list'.format(i)
-            continue
-        offspringList.append(i)
+        if i not in p1Reps:
+            if i not in p2Reps:
+                offspringList.append(i)
     print '\nFound {} Offsrping in the File'.format(len(offspringList))
     return offspringList
 
@@ -164,6 +136,8 @@ def test_heterozygosity(genotype):
     else:
         answer = 'TRUE'
     return answer
+
+
 
 def get_modal_geno(genotypeDict, samples, genoList):
     '''function to grab the modal genotype for parent replicates (ties are OK)
@@ -212,8 +186,9 @@ def filter_variants_by_parent(pReps, genotypeDict, variantList, sampleList, data
     '''This function filters variants based on the availability and agreement of 
     data from the parent replicates. It also  develops concensus parent data
     by pulling the 'best' genotype for each variant based on the parent replicates.
+    
     '''
-    keepList = [] #list to keep a set of index numbers from variantList for variants we want to keep
+    keepList = []
     trashList = []
     startingTotal = len(variantList)
     trashedMissing = 0
@@ -306,7 +281,7 @@ def filter_uninformative(variantList, genotypeDict, p1, p2):
         
 
 def reassign_nonparental_alleles(genotypeDict, sampleList, variantList, offspringList, p1, p2):
-    '''This function reassigns any alleles from the offspring that are absent in the parents to missing data
+    '''This function reassigns any alleles from the offspring 
     '''
     print '\nFinding Samples with Nonparental Alleles...'
     p1GenoList = genotypeDict[p1]
@@ -338,153 +313,45 @@ def reassign_nonparental_alleles(genotypeDict, sampleList, variantList, offsprin
     print '\n\t{} calls were already missing'.format(missing)
     print '\n\tProduct of Number of Variants and Number of Offspring = {}'.format(len(variantList) * len(offspringList))
     return genotypeDict  
-def output_GCF(GenotypeDict, OffspringList, VariantList, GCFout, InfileName):
+
+
+def output_GCF(GenotypeDict, SampleList, VariantList, GCFout, InfileName):
     print '\nOutputting Filtered Data as a GCF file...'
-    # print '\n\n\n\n'
-    # print GenotypeDict['ACCA_CA1c-3_AAGTAT']
     with open(GCFout, 'w') as out:
-        out.write('#data from {} filtered with GCF_to_OneMap.py'.format(InfileName))
-        out.write('\n*\t' + '\t'.join(OffspringList))
+        out.write('#data from {} as simple genotype table'.format(InfileName))
+        out.write('\n*\t' + '\t'.join(SampleList))
         for i in range(len(VariantList)):
             genotypeList = []
             variant = VariantList[i]
-            for x in OffspringList:
+            for x in SampleList:
                 genotype = GenotypeDict[x][i]
-                genotypeList.append(genotype) #append each offspring's genotype to the list so that the list length is equal to length of offspring list
-            variantString = '\t'.join(genotypeList)
+                genotypeList.append(genotype)
+                variantString = '\t'.join(genotypeList)
             out.write('\n' + variant + '\t' + variantString)
-    print '\nGCF file saved as {}'.format(GCFout)
+    print '\n\tGCF file saved as {}'.format(GCFout)
 
 
-
-def build_expected_ratio_dict():
-    '''function to build the dictionary connecting cross types with their expected
-    ratio vectors. Data will be recorded in nested dictionaries. Top set of keys
-    is the cross types. For each cross type, the next set of keys is the possible genotypes
-    linked with their expected ratios based on the cross type. See OneMap tutorial for table
-    of cross type notations and expected ratios.
-    '''
-    expRatiosDict = {'A.1' : {'ac' : .25, 'ad' : .25, 'bc' : .25, 'bd' : .25},
-    'A.2' : {'a' : .25, 'ac' : .25, 'ba' : .25, 'bc' : .25},
-    'B3.7' : {'a' : .25, 'ab' : .5, 'b' : .25},
-    'D1.9' : {'ac' : .5, 'bc' : .5},
-    'D1.10' : {'a' : .5, 'ab' : .5},
-    'D2.14' : {'ac' : .5, 'bc' : .5},
-    'D2.15' : {'a' : .5, 'ab' : .5}}
-    return expRatiosDict
-
-
-HomoCallsFixed = []
-BadCallsRemoved = []
-BadCallsTotal = []
-TotalCalls = []
-GoodCalls = []
-Missing = []
-def do_conversions(p1Geno, p2Geno, crossType, variant, convertedVariantList, offspringList, converter, genotypeDict, convertedDict, index):
+def do_conversions(variant, convertedVariantList, offspringList, converter, genotypeDict, convertedDict, index):
     '''function to perform conversions of sample alleles using a crossType specific converter
     This is ussed in the functions that assign the variatns to each crosstype and convert their 
-    data to oneMap format.. 
-    9/5/14 Update:
-    Altered the function so that now it changes bad genotypes to missing data. This used to be done as part of the OneMap_Input filterer, 
-    but since we needed it done before the selectionAnalysis input (the -gcf argument above), it occurs here at the same time as cross type assignment.
-    Also, since for certain cross types, and incorrect genotype call can be corrected to the heterozygote call it must be, those fixes are now made, so we are
-    retaining more data.
-    '''
+    data to oneMap format'''
     convertedVariantList.append(variant)
     for sample in offspringList:
-        varSam = variant + '_' + sample
-        TotalCalls.append(varSam)
         genotype = genotypeDict[sample][index].split('/')
         a1 = genotype[0]
         a2 = genotype[1]
         if a1 == '-' and a2 == '-':
             convertedDict[sample].append('-')
-            Missing.append(varSam)
             continue
         convertedGeno = [converter[a1]]
         if converter[a2] not in convertedGeno:
             convertedGeno.append(converter[a2]) ##this deals with possibility of a homozygous offspring, although technically this should not happen in some crosstypes
         convertedGeno.sort()
         convertedGeno2 = ''.join(convertedGeno)
-        # print
-        # print crossType
-        # print sample
-        # print convertedGeno2
-        # print "parents: {}   {}".format(p1Geno, p2Geno)
-        ###before appended the converted genotype, we need to check it to make sure it could happend with the parental cross type
-        if convertedGeno2 not in ExpRatiosDict[crossType].keys():##if it is a bad genotype call
-            print '--------------'
-            print 'badCall!'
-            BadCallsTotal.append(varSam)##record the bad genotype call
-            if crossType in TypesToFix:##repair dropped homozygote only for certain crossTypes
-                # print '\nMay need Fixing!'
-                if test_heterozygosity(genotype) == 'TRUE':
-                    # print "it' a het, so replace with missing data"
-                    BadCallsRemoved.append(varSam)
-                    GenotypeDictRet[sample][index] = '-/-' #record the bad heterozygote call as missing data. Note this is in genotypeDictRet calling on the global variable
-                    convertedGeno2 = '-'                    
-                else: ##the offspring genotype is homozygous and may need fixing
-                    #find the allele that's only in one parent (shouldn't ever be homozygous in offspring)
-                    print variant
-                    print VariantList[index]
-                    print VariantListRet[index]
-                    indexRet = VariantListRet.index(variant)
-                    print VariantListRet[indexRet]
-                    print crossType
-                    print sample
-                    print genotype
-                    print convertedGeno2
-                    print "parents: {}   {}".format(p1Geno, p2Geno)
-                    print "it's a homozygote!"
-                    uniqueAlleles = []
-                    pAlleles = p1Geno + p2Geno
-                    for A in pAlleles:
-                        if A not in uniqueAlleles: uniqueAlleles.append(A)
-                    scoreDict = {}
-                    for A in uniqueAlleles:
-                        scoreDict[pAlleles.count(A)] = A ##record the allele based on score for easy calling either 1 or 3
-                    singleAllele = scoreDict[1]
-                    multiAllele = scoreDict[3]
-                    if singleAllele in genotype:
-                        # print "needs fixing"
-                        HomoCallsFixed.append(varSam)
-                        newGeno = [singleAllele, multiAllele]
-                        newGeno.sort()
-                        print newGeno
-                        indexRet = VariantListRet.index(variant)
-                        print '*'
-                        GenotypeDictRet[sample][indexRet] = '/'.join(newGeno) #record fixed genotype for gcf file export
-                        print '/'.join(newGeno)
-                        # GenotypeDictRet[sample][index] = 'changed'
-                        convertedGeno2 = 'ab' ##it has to be ab for a heterozygote in these two cross types
-                        # print "Fixed to {}".format(convertedGeno2)
-            else:
-                # print "Simply replace"
-                #replace with missing data
-                BadCallsRemoved.append(varSam)
-                GenotypeDictRet[sample][index] = '-/-' #replace in the genotype dictionary for later use in selection analysis
-                convertedGeno2 = '-'                    #replace in the new converted Genotypes for mapping
-        else: #it is a good genotype call
-            GoodCalls.append(varSam)
         convertedDict[sample].append(convertedGeno2)
-       
-def build_retention_dict(genotypeDict, sampleList):
-    """Build a second dictionary to keep the genotypeDict information in.
-    This is necessary because entires are removed from the genotype dict as 
-    the cross types are assigned, but with the updates, we also need a second
-    genotype dictionary to remain intact for exporting the filtered GCF file for 
-    selection analysis input. The ouput is identical to the genotypeDict
-    and will be called genotypeDictRet for retention."""
-    genotypeDictRet = {}
-    for i in sampleList:
-        genotypeDictRet[i] = genotypeDict[i]
-    return genotypeDictRet
+        
 
 def gather_parent_genotype_data(genotypeDict, index):
-    """function to lget concensus parental genotypes 
-    assigned by 'filter_variants_by_parent()' and test
-    their heterozygosity and return their alleles.
-    This is used in downstream functions."""
     p1Geno = genotypeDict[p1][index].split('/')
     p2Geno = genotypeDict[p2][index].split('/')
     p1a1 = p1Geno[0]; p1a2 = p1Geno[1]; p2a1 = p2Geno[0]; p2a2 = p2Geno[1]
@@ -509,7 +376,7 @@ def get_A1_crosstypes(genotypeDict, sampleList, variantList, p1, p2, verbose):
     A.1 cross types have 4 parental alleles, so both parents are heterozygotes,
     and do not share any alleles.
     Two global variables are generated:
-    ConvertedDict and CrossTypeList
+    ConvertDict and CrossTypeList
     which will be added to as variants identified as other cross types
     by the following functions'''
     convertedDict = {}
@@ -540,7 +407,7 @@ def get_A1_crosstypes(genotypeDict, sampleList, variantList, p1, p2, verbose):
             A1List.append(variantList[i])
             crossTypeList.append(crossType)
             converter = {p1a1: 'a', p1a2: 'b', p2a1: 'c', p2a2: 'd'}
-            do_conversions(p1Geno, p2Geno, crossType, variant, convertedVariantList, OffspringList, converter, GenotypeDict, convertedDict, i)
+            do_conversions(variant, convertedVariantList, OffspringList, converter, GenotypeDict, convertedDict, i)
         else:
             keepList.append(i)
     print_cross_type_results(assignmentCount, verbose, A1List, 'A.1')
@@ -584,7 +451,7 @@ def get_A2_crosstypes(convertedVariantList, genotypeDict, convertedDict, crossTy
                     exit('ERROR!') #this should not happen unless there's a mistake
                 p2Geno.remove(p1a2)
                 converter = {p1a1: 'b', p1a2: 'a', p2Geno[0]: 'c'} #if p1a2 is shared, make it 'a'
-            do_conversions(p1Geno, p2Geno, crossType, variant, convertedVariantList, OffspringList, converter, GenotypeDict, convertedDict, i)
+            do_conversions(variant, convertedVariantList, OffspringList, converter, GenotypeDict, convertedDict, i)
         else:
             keepList.append(i) #the variant is not crossType A.2 so retain it for further iterations
     print_cross_type_results(assignmentCount, verbose, A2List, 'A.2')
@@ -619,7 +486,12 @@ def get_B3_crosstypes(convertedVariantList, genotypeDict, convertedDict, crossTy
             converter = {p1a1: 'a', p1a2: 'b'}
             if p1a1 not in p2Geno or p1a2 not in p2Geno:
                 exit('ERROR!') #this should not happen
-            do_conversions(p1Geno, p2Geno, crossType, variant, convertedVariantList, OffspringList, converter, GenotypeDict, convertedDict, i)
+            
+            # print
+            # print p1Geno
+            # print p2Geno
+            
+            do_conversions(variant, convertedVariantList, OffspringList, converter, GenotypeDict, convertedDict, i)
         else:
             keepList.append(i)
     print_cross_type_results(assignmentCount, verbose, B3List, 'B3.7')
@@ -662,7 +534,7 @@ def get_D_crosstypes1(convertedVariantList, genotypeDict, convertedDict, crossTy
                 D9List.append(variantList[i])
                 crossTypeList.append(crossType)
                 converter = {p1a1: 'a', p1a2: 'b', p2a1: 'c'}
-                do_conversions(p1Geno, p2Geno, crossType, variant, convertedVariantList, OffspringList, converter, GenotypeDict, convertedDict, i)
+                do_conversions(variant, convertedVariantList, OffspringList, converter, GenotypeDict, convertedDict, i)
         elif p1Het == 'FALSE' and p2Het == 'TRUE':
             if p1a1 in p2Geno or p1a2 in p2Geno: #this would be D2.15, so skip here
                 keepList.append(i)
@@ -677,7 +549,7 @@ def get_D_crosstypes1(convertedVariantList, genotypeDict, convertedDict, crossTy
                 DList.append(variantList[i])
                 crossTypeList.append(crossType)
                 converter = {p2a1: 'a', p2a2: 'b', p1a1: 'c'}
-                do_conversions(p1Geno, p2Geno, crossType, variant, convertedVariantList, OffspringList, converter, GenotypeDict, convertedDict, i)
+                do_conversions(variant, convertedVariantList, OffspringList, converter, GenotypeDict, convertedDict, i)
         else:
             keepList.append(i)
             print "this shouldn't happen..."
@@ -713,7 +585,7 @@ def get_D_crosstypes2(convertedVariantList, genotypeDict, convertedDict, crossTy
                     converter = {p1a2: 'a', p1a1: 'b'}
                 else:
                     exit('ERROR!') #shouldn't happen
-                do_conversions(p1Geno, p2Geno, crossType, variant, convertedVariantList, OffspringList, converter, GenotypeDict, convertedDict, i)
+                do_conversions(variant, convertedVariantList, OffspringList, converter, GenotypeDict, convertedDict, i)
         elif p1Het == 'FALSE' and p2Het == 'TRUE':
             if p1a1 in p2Geno and p1a2 in p2Geno:
                 D15List.append(variantList[i])
@@ -728,7 +600,7 @@ def get_D_crosstypes2(convertedVariantList, genotypeDict, convertedDict, crossTy
                     converter = {p2a2: 'a', p2a1: 'b'}
                 else:
                     exit('ERROR!') #shouldn't happen
-                do_conversions(p1Geno, p2Geno, crossType, variant, convertedVariantList, OffspringList, converter, GenotypeDict, convertedDict, i)
+                do_conversions(variant, convertedVariantList, OffspringList, converter, GenotypeDict, convertedDict, i)
         else:
             keepList.append(i)
             print 'This shoud not happen'
@@ -751,17 +623,8 @@ def check_leftover(notDList2):
             print i
     else:
         print "\nNice. All Variants Were Assigned"
-def report_results(Missing, GoodCalls, TotalCalls, HomoCallsFixed, BadCallsRemoved, BadCallsTotal, A1count, A2count, B3count, D9count, D10count, D14count, D15count):
-    print "\n\nData on Removed Genotypes:"
-    print "Number of bad genotype calls = {}".format(len(BadCallsTotal))
-    print "Number of bad genotype calls that were changed to missing data = {}".format(len(BadCallsRemoved))
-    print "Number of bad homozygous calls that were changed to inferred heterozygous calls = {}".format(len(HomoCallsFixed))
-    print "Number of Good Genotype Calls = {}".format(len(GoodCalls))
-    print "Total Number of Calls already Missing = {}".format(len(Missing))
-    print "Good + Bad + the Missing = {}".format(len(Missing) + len(GoodCalls) + len(BadCallsTotal))
-    print "Total Number of Genotype Calls = {}".format(len(TotalCalls))
-    print "Proportion of calls that were bad genotypes = {}".format(float(len(BadCallsTotal))/ float(len(TotalCalls)))
-    print '\n\n\nFiltering Parameters Used:'
+def report_results(A1count, A2count, B3count, D9count, D10count, D14count, D15count):
+    print '\n Filtering Parameters Used:'
     print 'Parent Replicates Genotyped Threshold: {}'.format(ParentDataThreshold)
     print 'Parent Replicates in Agreement Threshold: {}'.format(ParentMatchThreshold)
     print "\nFinal Results:"
@@ -779,7 +642,7 @@ def report_results(Missing, GoodCalls, TotalCalls, HomoCallsFixed, BadCallsRemov
 
 
 
-def output(outfileName, samplesOutputName, convertedVariantList, convertedDict, crossTypeList, offspringList, total):
+def output(outfileName, convertedVariantList, convertedDict, crossTypeList, offspringList, total):
     with open(outfileName, 'w') as out:
         header = "{} {}".format(len(offspringList), total) #the header of the OneMap input is #samples #loci
         out.write(header)
@@ -787,39 +650,22 @@ def output(outfileName, samplesOutputName, convertedVariantList, convertedDict, 
             variant = convertedVariantList[i]
             crossType = crossTypeList[i]
             genotypeList = []
-            with open(samplesOutputName, 'w') as sout:
-                offspringString = ','.join(offspringList)
-                sout.write('*marker\tcrosstype\t'+offspringString)
             for baby in offspringList:
                 geno = convertedDict[baby][i]
                 genotypeList.append(geno)
             genotypeString = ','.join(genotypeList)
             outString = "\n*{} {}\t{}".format(variant, crossType, genotypeString)
             out.write(outString)
-
-def output_concensus_parent_genotypes(GenotypeDict, VariantList, p1, p2):
-    """Function to output the consensus parent genotypes.
-    These were generated in the function 'filter_variants_by_parent'.
-    The output is then available for downstream analyses of distortion from
-    mendelian expectations."""
-    with open("concensus_parent_genotypes.txt", 'w') as out:
-        out.write("variant\tp1\tp2")
-        for i in range(len(VariantList)):
-            variant = VariantList[i]
-            p1geno = GenotypeDict[p1][i]
-            p2geno = GenotypeDict[p2][i]
-            outString = "\n{}\t{}\t{}".format(variant, p1geno, p2geno)
-            out.write(outString)
+            
+            
     
+    
+
 
 VariantList, GenotypesList, SampleList = read_GCF(InfileName)
 GenotypeDict = build_genotype_dictionary(VariantList, GenotypesList, SampleList)
 P1reps, P2reps = parent_rep_lists(ParentReplicateList)
-ExcludeList = read_exclude_list(ExcludeFileName)
-OffspringList = get_offspring_list(SampleList, P1reps, P2reps, ExcludeList)
-# for i in OffspringList:
-#     print i
-# exit()
+OffspringList = get_offspring_list(SampleList, P1reps, P2reps)
 KeepList, P1concensus = filter_variants_by_parent(P1reps, GenotypeDict, VariantList, SampleList, ParentDataThreshold, ParentMatchThreshold)
 p1 = 'PARENT1' #set global variable for concensus for parent 1
 GenotypeDict[p1] = P1concensus ##update the genotypeDict with the best genotype data for the first set of parent replicates
@@ -828,7 +674,6 @@ VariantList, GenotypeDict = remove_variants(VariantList, GenotypeDict, SampleLis
 KeepList2, P2concensus = filter_variants_by_parent(P2reps, GenotypeDict, VariantList, SampleList, ParentDataThreshold, ParentMatchThreshold)
 p2 = 'PARENT2'
 GenotypeDict[p2] = P2concensus
-output_concensus_parent_genotypes(GenotypeDict, VariantList, p1, p2)
 SampleList.append(p2)
 VariantList, GenotypeDict = remove_variants(VariantList, GenotypeDict, SampleList, KeepList2, Verbose)
 KeepList3 = filter_uninformative(VariantList, GenotypeDict, p1, p2)
@@ -839,17 +684,7 @@ print
 print "-"*60
 print "\nBegin Gathering the Variants that Match Each CrossType..."
 print "\nStarting with {} Filter-Passing Variants".format(len(VariantList))
-##now set up the retention dictionary for exporting gcf file
-# print '\n\n\n\n'
-# print GenotypeDict['ACCA_CA1c-3_AAGTAT']
-VariantListRet = []
-for X in VariantList:
-    VariantListRet.append(X)
-GenotypeDictRet = build_retention_dict(GenotypeDict, SampleList)
-# print '\n\n\n\n'
-# print GenotypeDictRet['ACCA_CA1c-3_AAGTAT']
-ExpRatiosDict = build_expected_ratio_dict()
-
+output_GCF(GenotypeDict, SampleList, VariantList, GCFout, InfileName)
 ConvertedVariantList, ConvertedDict, CrossTypeList, notA1List, A1count = get_A1_crosstypes(GenotypeDict, SampleList, VariantList, p1, p2, Verbose)
 VariantList, GenotypeDict = remove_variants(VariantList, GenotypeDict, SampleList, notA1List, Verbose)
 notA2List, A2count = get_A2_crosstypes(ConvertedVariantList, GenotypeDict, ConvertedDict, CrossTypeList, SampleList, VariantList, p1, p2, Verbose)
@@ -860,24 +695,8 @@ notDList1, D9count, D14count = get_D_crosstypes1(ConvertedVariantList, GenotypeD
 VariantList, GenotypeDict = remove_variants(VariantList, GenotypeDict, SampleList, notDList1, Verbose)
 notDList2, D10count, D15count = get_D_crosstypes2(ConvertedVariantList, GenotypeDict, ConvertedDict, CrossTypeList, SampleList, VariantList, p1, p2, Verbose)
 check_leftover(notDList2)
-Total = report_results(Missing, GoodCalls, TotalCalls, HomoCallsFixed, BadCallsRemoved, BadCallsTotal, A1count, A2count, B3count, D9count, D10count, D14count, D15count)
+Total = report_results(A1count, A2count, B3count, D9count, D10count, D14count, D15count)
 # print len(CrossTypeList)
 # print len(ConvertedDict[OffspringList[1]])
-output(OutfileName, SamplesOutputName, ConvertedVariantList, ConvertedDict, CrossTypeList, OffspringList, Total)
-print '\n\n\n\n'
-print GenotypeDictRet['ACCA_CA1c-3_AAGTAT']
-print '\n\n\n\n'
-print len(VariantList)
-print
-print len(VariantListRet)
-output_GCF(GenotypeDictRet, OffspringList, VariantListRet, GCFout, InfileName)
-##output the control sample list
-with open('controlSamples.txt', 'w') as out:
-    num = 0
-    for i in OffspringList:
-        if 'c-' in i:
-            num += 1
-            if num == 1:
-                out.write(i)
-            else:
-                out.write('\n'+i)
+output(OutfileName, ConvertedVariantList, ConvertedDict, CrossTypeList, OffspringList, Total)
+

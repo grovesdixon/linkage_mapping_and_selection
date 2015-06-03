@@ -1,1 +1,20 @@
 isogroup scaffold start end annotation lg cM scaff.pos
+isogroup=27054 c587076 90723 90512 NA 12 1196.016 90617.5
+isogroup=38158 c587076 91029 91257 NA 12 1196.016 91143
+isogroup=18244 c587076 118135 117635 Mitochondrial phosphate carrier protein ; solute carrier family 25 (mitochondrial dicarboxylate transporter), member 10 E=3e-13 12 1196.016 117885
+isogroup=341 c587076 11195 9605 voltage-dependent calcium channel N type alpha-1B E=9e-73 12 1193.466 10400
+isogroup=34591 c587076 8677 9124 NA 12 1193.466 8900.5
+isogroup=32000 c587076 85496 85828 NA 12 1196.016 85662
+isogroup=3507 c587076 56340 54558 Histone H3 (Lys9) methyltransferase SUV39H1/Clr4, required for transcriptional silencing ; mRNA-decapping enzyme 1B [EC:3.-.-.-] E=6e-144 12 1196.016 55449
+isogroup=43758 c587076 118263 118507 NA 12 1196.016 118385
+isogroup=17880 c587076 109456 109682 Predicted mitochondrial carrier protein ; solute carrier family 25 (peroxisomal adenine nucleotide transporter), member 17 E=1e-16 12 1196.016 109569
+isogroup=41790 c587076 87354 87696 NA 12 1196.016 87525
+isogroup=24367 c587076 64627 64320 Subunit of the major N alpha-acetyltransferase 12 1196.016 64473.5
+isogroup=38063 c587076 67199 67062 NA 12 1196.016 67130.5
+isogroup=20639 c587076 7252 6714 Arginine-rich protein 12 1193.466 6983
+isogroup=5702 c587076 81662 80265 Ca2+/calmodulin-dependent protein kinase, EF-Hand protein superfamily ; protein serine kinase H [EC:2.7.11.1] E=1e-87 12 1196.016 80963.5
+isogroup=19752 c587076 20997 22112 Voltage-gated Ca2+ channels, alpha1 subunits ; voltage-dependent calcium channel L type alpha-1D E=7e-09 12 1193.466 21554.5
+isogroup=31960 c587076 128969 128701 NA 12 1196.016 128835
+isogroup=19682 c587076 130132 129016 FOG: Zn-finger ; KRAB domain-containing zinc finger protein E=1e-113 12 1196.016 129574
+isogroup=37459 c587076 9108 9506 NA 12 1193.466 9307
+isogroup=27643 c587076 84366 83835 Dynein-associated protein Roadblock ; dynein light chain roadblock-type E=1e-52 12 1196.016 84100.5
